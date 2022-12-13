@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
@@ -6,6 +7,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBotTest
@@ -38,17 +40,19 @@ namespace TelegramBotTest
         
             async static Task HandleUpdatesAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
             {
-                if (update.Type == UpdateType.Message && update?.Message?.Text != null)
+                var message = update.Message;
+                if (update.Type == UpdateType.Message && message?.Text != null)
                 {
-                    await HandleMessage(botClient, update.Message);
+                    await HandleMessage(botClient, message);
                     return;
                 }
 
-                if (update?.Type == UpdateType.CallbackQuery)
+                if (update?.Type == UpdateType.CallbackQuery && update?.CallbackQuery != null)
                 {
                     await HandleCallbackQuery(botClient, update.CallbackQuery);
                     return;
                 }
+                
             }
 
             async static Task HandleMessage(ITelegramBotClient botClient, Message message)
@@ -64,8 +68,8 @@ namespace TelegramBotTest
                 {
                     ReplyKeyboardMarkup keyboard = new(new[]
                     {
-            new KeyboardButton[] {"Hello", "Goodbye"},
-            new KeyboardButton[] {"Привет", "Пока"}
+            new KeyboardButton[] {"Поиск по ключу", "Команды консоли (AutoCAD)"},
+            new KeyboardButton[] {"Конструктор шапок", "Конструктор колодцев"}
         })
                     {
                         ResizeKeyboard = true
@@ -80,8 +84,8 @@ namespace TelegramBotTest
                     {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("Buy 50c", "buy_50c"),
-                InlineKeyboardButton.WithCallbackData("Buy 100c", "buy_100c"),
+                InlineKeyboardButton.WithCallbackData("Поиск по ключу", "search_key"),                 //Создает кнопку которая при нажатии ее отправляет боту CallbackQuerry
+                InlineKeyboardButton.WithCallbackData("Команды консоли (AutoCAD)", "command_AutoCAD"),
             },
             new[]
             {
@@ -92,16 +96,25 @@ namespace TelegramBotTest
                     await botClient.SendTextMessageAsync(message.Chat.Id, "Choose inline:", replyMarkup: keyboard);
                     return;
                 }
-
+                if (message.Text.ToLower().Contains("ошибка 88"))
+                {
+                    await using Stream stream = System.IO.File.OpenRead("C:\\WORK\\Профиль Документация\\Описание ошибки 88.pdf");
+                    Message mess = await botClient.SendDocumentAsync(
+                                                    message.Chat.Id,
+                                                    document: new InputOnlineFile(content: stream, fileName: "Ошибка 88.pdf"),
+                                                    caption: "Описание ошибки 88");
+                    return;
+                }
                 await botClient.SendTextMessageAsync(message.Chat.Id, $"You said:\n{message.Text}");
             }
+
             async static Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
             {
-                if (callbackQuery.Data.StartsWith("buy"))
+                if (callbackQuery.Data.StartsWith("search"))
                 {
                     await botClient.SendTextMessageAsync(
                         callbackQuery.Message.Chat.Id,
-                        $"Вы хотите купить?"
+                        $"Напишите ключевое слово, по которому стоит искать"
                     );
                     return;
                 }
